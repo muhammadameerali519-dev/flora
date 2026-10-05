@@ -1,0 +1,6 @@
+{
+  "name": "FLORA LUXE | International Luxury Maison",
+  "description": "Ultra-premium luxury women's fashion, fine jewelry, beauty and accessories maison with bespoke concierge.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

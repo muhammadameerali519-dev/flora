@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Archivo", system-ui, -apple-system, sans-serif;
+  --font-serif: "Playfair Display", Georgia, serif;
+  --color-primary: #E94F91;
+  --color-primary-dark: #C93673;
+  --color-baby-pink: #FDE7F1;
+  --color-soft-pink: #F8C9DC;
+  --color-blush: #FFF0F6;
+  --color-dark: #241B20;
+  --color-border: #F1D6E2;
+}
+
+:root {
+  --background: #FFF9FC;
+  --foreground: #241B20;
+
+  --primary: #E94F91;
+  --primary-dark: #C93673;
+
+  --baby-pink: #FDE7F1;
+  --soft-pink: #F8C9DC;
+  --blush: #FFF0F6;
+
+  --white: #FFFFFF;
+
+  --card: #FFFFFF;
+
+  --muted-foreground: #806F77;
+
+  --border: #F1D6E2;
+
+  --dark: #241B20;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    color: var(--foreground);
+    background-color: var(--background);
+    overflow-x: hidden;
+  }
+
+  .font-serif {
+    font-family: var(--font-serif);
+  }
+
+  .font-archivo {
+    font-family: var(--font-sans);
+  }
+}
+
+/* Animations specified in prompt */
+@keyframes floatPetal {
+  0% {
+    transform: translateY(0px) rotate(0deg) scale(0.9);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.7;
+  }
+  80% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-130px) rotate(45deg) scale(1.1);
+    opacity: 0;
+  }
+}
+
+@keyframes buttonShine {
+  0% {
+    transform: translateX(-100%) skewX(-15deg);
+  }
+  100% {
+    transform: translateX(250%) skewX(-15deg);
+  }
+}
+
+.animate-float-petal {
+  animation: floatPetal 9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-button-shine {
+  animation: buttonShine 3s infinite ease-in-out;
+}
+
+.pink-glow {
+  box-shadow: 0 0 35px rgba(233, 79, 145, 0.22);
+}
+
+.pink-glow-lg {
+  box-shadow: 0 0 60px rgba(233, 79, 145, 0.28);
+}
+
+/* Hide scrollbar for carousel */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
