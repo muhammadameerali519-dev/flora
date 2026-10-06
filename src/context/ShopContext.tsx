@@ -132,13 +132,12 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
 
-  // Admin Auth State
+  // Admin Auth State: Locked by default for security, requires password every time
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
     try {
-      return localStorage.getItem('flora_admin_authenticated') === 'true';
-    } catch {
-      return false;
-    }
+      localStorage.removeItem('flora_admin_authenticated');
+    } catch {}
+    return false;
   });
   const [isAdminOpen, setIsAdminOpen] = useState(false);
 
@@ -191,12 +190,6 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('flora_luxe_inquiries', JSON.stringify(inquiries));
     } catch {}
   }, [inquiries]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('flora_admin_authenticated', isAdminLoggedIn ? 'true' : 'false');
-    } catch {}
-  }, [isAdminLoggedIn]);
 
   const showToast = (message: string, subtext?: string) => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -400,14 +393,16 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     showToast('Inquiry Updated', `Status marked as ${status}`);
   };
 
-  // Admin login check
+  // Admin login check with strict master password
   const adminLogin = (user: string, pass: string): boolean => {
     const normalizedUser = user.trim().toLowerCase();
     const normalizedPass = pass.trim();
 
+    const validUsernames = ['admin', 'flora.admin', 'floraluxe', 'noor', 'noorfatima'];
+
     if (
-      (normalizedUser === 'admin' || normalizedUser === 'flora.admin' || normalizedUser === 'floraluxe') &&
-      (normalizedPass === 'flora@luxe2026' || normalizedPass === 'flora123' || normalizedPass === 'admin123')
+      validUsernames.includes(normalizedUser) &&
+      normalizedPass === 'flora@luxe2026'
     ) {
       setIsAdminLoggedIn(true);
       showToast('Welcome, Administrator', 'Access granted to FLORA LUXE Portal');

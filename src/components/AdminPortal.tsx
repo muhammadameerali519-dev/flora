@@ -266,7 +266,10 @@ export const AdminPortal: React.FC = () => {
               </button>
             )}
             <button
-              onClick={() => setIsAdminOpen(false)}
+              onClick={() => {
+                adminLogout();
+                setIsAdminOpen(false);
+              }}
               className="p-2 rounded-full border border-[#F1D6E2] hover:bg-[#FFF0F6] text-[#241B20] transition-colors"
             >
               <X className="w-5 h-5" />
@@ -293,7 +296,7 @@ export const AdminPortal: React.FC = () => {
 
               <form onSubmit={handleLoginSubmit} className="space-y-4">
                 {loginError && (
-                  <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium">
+                  <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
                     {loginError}
                   </div>
                 )}
@@ -307,7 +310,7 @@ export const AdminPortal: React.FC = () => {
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Enter admin username (e.g. admin)"
+                    placeholder="Enter admin username"
                     className="w-full px-4 py-3 rounded-xl border border-[#F1D6E2] text-xs text-[#241B20] focus:outline-none focus:border-[#E94F91] transition-colors"
                   />
                 </div>
@@ -332,14 +335,6 @@ export const AdminPortal: React.FC = () => {
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-[#FFF9FC] border border-[#F1D6E2] text-[11px] text-[#806F77] space-y-1">
-                  <div className="font-bold text-[#241B20]">Preconfigured Demo Credentials:</div>
-                  <div className="flex items-center justify-between">
-                    <span>Username: <strong className="text-[#E94F91]">admin</strong></span>
-                    <span>Password: <strong className="text-[#E94F91]">flora123</strong></span>
                   </div>
                 </div>
 
