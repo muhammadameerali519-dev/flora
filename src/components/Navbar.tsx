@@ -133,23 +133,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onReplayWelcome }) => {
               )}
             </button>
 
-            {/* Admin Portal Button */}
-            <button
-              onClick={() => setIsAdminOpen(true)}
-              aria-label="Admin Portal"
-              title="Admin Portal"
-              className={`p-2.5 rounded-full transition-all focus-visible:ring-2 focus-visible:ring-[#E94F91] relative ${
-                isAdminLoggedIn
-                  ? 'text-[#E94F91] bg-[#FFF0F6] border border-[#F1D6E2]'
-                  : 'text-[#241B20] hover:text-[#E94F91] hover:bg-[#FDE7F1]'
-              }`}
-            >
-              <Lock className="w-5 h-5 stroke-[2.2]" />
-              {isAdminLoggedIn && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-[#059669] rounded-full ring-2 ring-white" />
-              )}
-            </button>
-
             {/* Luxury Pink Button: SHOP NOW */}
             <button
               onClick={handleShopNow}
