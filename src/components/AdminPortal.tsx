@@ -1,12 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   X, Lock, ShieldCheck, ShoppingBag, DollarSign, Package,
   MessageCircle, ExternalLink, Plus, CheckCircle, Clock,
-  Truck, Check, Eye, EyeOff, LogOut, ArrowLeft, RefreshCw, Trash2
+  Truck, Check, Eye, EyeOff, LogOut, ArrowLeft, RefreshCw, Trash2,
+  Upload, Camera, Image as ImageIcon, Link as LinkIcon
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext';
 import { FloraLogo } from './FloraLogo';
 import { Product, OrderStatus } from '../types';
+import { jewelryImg, handbagImg, beautyImg } from '../data/products';
+
+// Client-side helper to resize & compress uploaded images before storage
+function compressImage(file: File, maxWidth = 900, quality = 0.82): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } else {
+          resolve(e.target?.result as string);
+        }
+      };
+      img.onerror = () => resolve(e.target?.result as string);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export const AdminPortal: React.FC = () => {
   const {
@@ -39,7 +73,7 @@ export const AdminPortal: React.FC = () => {
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('All');
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
 
-  // New product form
+  // New product form state
   const [newProd, setNewProd] = useState<Partial<Product>>({
     name: '',
     tagline: '',
@@ -52,6 +86,16 @@ export const AdminPortal: React.FC = () => {
     rating: 5.0,
     reviewCount: 1,
   });
+
+  // Image Upload state for Add Product modal
+  const [productImages, setProductImages] = useState<string[]>([]);
+  const [imageUrlInput, setImageUrlInput] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Card photo quick edit state
+  const editCardFileInputRef = useRef<HTMLInputElement>(null);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
   if (!isAdminOpen) return null;
 
@@ -74,14 +118,61 @@ export const AdminPortal: React.FC = () => {
     ? orders
     : orders.filter((o) => o.status === orderStatusFilter);
 
+  // Handle file uploads from device (phone / PC)
+  const handleImageFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploadingImage(true);
+    try {
+      const compressedList: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.type.startsWith('image/')) {
+          const base64 = await compressImage(file);
+          compressedList.push(base64);
+        }
+      }
+      if (compressedList.length > 0) {
+        setProductImages((prev) => [...prev, ...compressedList]);
+        showToast('Image Uploaded', `${compressedList.length} image(s) processed`);
+      }
+    } catch {
+      showToast('Upload Error', 'Could not process the selected image file');
+    } finally {
+      setIsUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // Handle URL attachment
+  const handleAddImageUrl = () => {
+    if (!imageUrlInput.trim()) return;
+    setProductImages((prev) => [...prev, imageUrlInput.trim()]);
+    setImageUrlInput('');
+    showToast('Image Attached', 'URL added to product images');
+  };
+
+  // Remove uploaded image
+  const handleRemoveImage = (index: number) => {
+    setProductImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Submit product creation
   const handleCreateProduct = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProd.name || !newProd.price) {
-      showToast('Validation Error', 'Please specify product name and price');
+      showToast('Validation Error', 'Please specify product title and price');
       return;
     }
 
-    const defaultImg = products[0]?.images[0] || '';
+    const fallbackImg =
+      newProd.category === 'Accessories' ? handbagImg :
+      newProd.category === 'Beauty' ? beautyImg :
+      jewelryImg;
+
+    const finalImages = productImages.length > 0 ? productImages : [fallbackImg];
+
     const created: Product = {
       id: `fl-custom-${Date.now().toString().slice(-5)}`,
       name: newProd.name,
@@ -91,7 +182,7 @@ export const AdminPortal: React.FC = () => {
       description: newProd.description || 'Handcrafted luxury piece designed for modern elegance.',
       details: ['Hand-inspected in our atelier', 'Includes luxury keepsake presentation box'],
       materials: newProd.materials || '18K Rose Gold Plated',
-      images: [defaultImg],
+      images: finalImages,
       isNewArrival: !!newProd.isNewArrival,
       isBestseller: !!newProd.isBestseller,
       rating: 5.0,
@@ -100,11 +191,13 @@ export const AdminPortal: React.FC = () => {
 
     addProduct(created);
     setIsAddProductModalOpen(false);
+    setProductImages([]);
+    setImageUrlInput('');
     setNewProd({
       name: '',
       tagline: '',
       category: 'Jewelry',
-      price: 150,
+      price: 12500,
       materials: '18K Rose Gold Plated',
       description: '',
       isNewArrival: true,
@@ -115,6 +208,34 @@ export const AdminPortal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/65 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
       <div className="bg-white rounded-[28px] max-w-6xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-[#F1D6E2] relative flex flex-col">
+        {/* Hidden input for quick card photo change */}
+        <input
+          ref={editCardFileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file || !editingProductId) return;
+            try {
+              const compressed = await compressImage(file);
+              const prod = products.find((p) => p.id === editingProductId);
+              if (prod) {
+                updateProduct({
+                  ...prod,
+                  images: [compressed, ...(prod.images?.slice(1) || [])],
+                });
+                showToast('Photo Updated', `${prod.name} cover modified`);
+              }
+            } catch {
+              showToast('Update Failed', 'Could not process the selected image');
+            } finally {
+              setEditingProductId(null);
+              if (editCardFileInputRef.current) editCardFileInputRef.current.value = '';
+            }
+          }}
+        />
+
         {/* Top Portal Bar */}
         <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md px-6 py-4 border-b border-[#F1D6E2] flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -128,8 +249,8 @@ export const AdminPortal: React.FC = () => {
                   Authorized Staff
                 </span>
               </div>
-              <span className="text-[10px] text-[#806F77] font-medium block">
-                Exclusive Pakistan Logistics & Store Management
+              <span className="text-[10px] text-[#806F77] block mt-0.5">
+                Executive Maison Management & Real-Time Orders
               </span>
             </div>
           </div>
@@ -137,8 +258,8 @@ export const AdminPortal: React.FC = () => {
           <div className="flex items-center gap-3">
             {isAdminLoggedIn && (
               <button
-                onClick={() => adminLogout()}
-                className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[#F1D6E2] text-xs font-bold text-[#806F77] hover:text-[#241B20] hover:bg-[#FFF0F6] transition-colors"
+                onClick={adminLogout}
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#F1D6E2] text-xs font-bold text-[#806F77] hover:text-[#241B20] hover:bg-[#FFF0F6] transition-colors"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Sign Out</span>
@@ -146,56 +267,54 @@ export const AdminPortal: React.FC = () => {
             )}
             <button
               onClick={() => setIsAdminOpen(false)}
-              aria-label="Close portal"
-              className="p-2 rounded-full text-[#806F77] hover:bg-[#FFF0F6] hover:text-[#241B20] transition-colors"
+              className="p-2 rounded-full border border-[#F1D6E2] hover:bg-[#FFF0F6] text-[#241B20] transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Portal Main Body */}
+        {/* Body Content */}
         <div className="p-6 sm:p-8 flex-1">
           {!isAdminLoggedIn ? (
-            /* 1. LOGIN VIEW (Exact prompt requirement: no forget button!) */
-            <div className="max-w-md mx-auto py-10">
+            /* Admin Sign-in Gate */
+            <div className="max-w-md mx-auto py-8">
               <div className="text-center mb-8">
-                <div className="w-16 h-16 rounded-3xl bg-[#FFF0F6] border border-[#F1D6E2] flex items-center justify-center mx-auto mb-4 text-[#E94F91] shadow-sm">
-                  <Lock className="w-8 h-8 stroke-[1.8]" />
+                <div className="w-16 h-16 rounded-full bg-[#FFF0F6] border border-[#F1D6E2] flex items-center justify-center mx-auto mb-4 text-[#E94F91]">
+                  <Lock className="w-7 h-7" />
                 </div>
-                <h2 className="text-2xl font-black text-[#241B20] tracking-tight uppercase">
-                  Staff Authentication
-                </h2>
-                <p className="mt-1 text-xs text-[#806F77] font-medium">
-                  Enter authorized administrator credentials to manage orders and stock.
+                <h3 className="text-2xl font-black text-[#241B20] uppercase tracking-tight">
+                  Maison Admin Access
+                </h3>
+                <p className="text-xs text-[#806F77] mt-1 font-medium">
+                  Protected portal for FLORA LUXE orders, products, and customer communications.
                 </p>
               </div>
 
-              {loginError && (
-                <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 text-xs font-medium text-red-700 animate-in fade-in">
-                  {loginError}
-                </div>
-              )}
+              <form onSubmit={handleLoginSubmit} className="space-y-4">
+                {loginError && (
+                  <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium">
+                    {loginError}
+                  </div>
+                )}
 
-              <form onSubmit={handleLoginSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#241B20] mb-2">
-                    Admin Username
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#241B20] mb-1.5">
+                    Username
                   </label>
                   <input
                     type="text"
                     required
-                    autoFocus
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Enter username"
-                    className="w-full px-4 py-3.5 rounded-xl border border-[#F1D6E2] bg-[#FFF9FC] text-xs text-[#241B20] font-medium focus:outline-none focus:border-[#E94F91] transition-colors"
+                    placeholder="Enter admin username (e.g. admin)"
+                    className="w-full px-4 py-3 rounded-xl border border-[#F1D6E2] text-xs text-[#241B20] focus:outline-none focus:border-[#E94F91] transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#241B20] mb-2">
-                    Admin Password
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#241B20] mb-1.5">
+                    Password
                   </label>
                   <div className="relative">
                     <input
@@ -203,303 +322,278 @@ export const AdminPortal: React.FC = () => {
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter password"
-                      className="w-full px-4 py-3.5 rounded-xl border border-[#F1D6E2] bg-[#FFF9FC] text-xs text-[#241B20] font-medium focus:outline-none focus:border-[#E94F91] transition-colors pr-10"
+                      placeholder="Enter administrator password"
+                      className="w-full pl-4 pr-10 py-3 rounded-xl border border-[#F1D6E2] text-xs text-[#241B20] focus:outline-none focus:border-[#E94F91] transition-colors"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      aria-label="Toggle password visibility"
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#806F77] hover:text-[#241B20] transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#806F77] hover:text-[#241B20]"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
 
-                {/* NOTE: Explicitly NO "forgot password" button as strictly requested by user! */}
+                <div className="p-3 rounded-xl bg-[#FFF9FC] border border-[#F1D6E2] text-[11px] text-[#806F77] space-y-1">
+                  <div className="font-bold text-[#241B20]">Preconfigured Demo Credentials:</div>
+                  <div className="flex items-center justify-between">
+                    <span>Username: <strong className="text-[#E94F91]">admin</strong></span>
+                    <span>Password: <strong className="text-[#E94F91]">flora123</strong></span>
+                  </div>
+                </div>
 
                 <button
                   type="submit"
-                  className="w-full py-4 rounded-full bg-[#E94F91] hover:bg-[#C93673] text-white text-xs font-black tracking-[0.2em] uppercase shadow-[0_8px_25px_rgba(233,79,145,0.35)] transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 mt-4"
+                  className="w-full py-3.5 rounded-full bg-[#E94F91] hover:bg-[#C93673] text-white text-xs font-bold tracking-[0.16em] uppercase shadow-md transition-all hover:scale-[1.01] active:scale-[0.99]"
                 >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>SIGN IN TO PORTAL</span>
+                  Enter Management Portal
                 </button>
               </form>
             </div>
           ) : (
-            /* 2. AUTHENTICATED DASHBOARD VIEW */
-            <div className="space-y-8">
-              {/* Metric Cards Row */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="p-5 rounded-2xl bg-[#FFF0F6] border border-[#F1D6E2]">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#806F77]">
-                      Total Orders
-                    </span>
-                    <Package className="w-4 h-4 text-[#E94F91]" />
-                  </div>
-                  <div className="text-2xl font-black text-[#241B20] tabular-nums">
-                    {orders.length}
-                  </div>
-                  <span className="text-[10px] text-[#059669] font-bold block mt-1">
-                    {pendingOrders} Pending Verification
-                  </span>
-                </div>
-
-                <div className="p-5 rounded-2xl bg-white border border-[#F1D6E2]">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#806F77]">
-                      Total Revenue
-                    </span>
-                    <DollarSign className="w-4 h-4 text-[#059669]" />
-                  </div>
-                  <div className="text-2xl font-black text-[#241B20] tabular-nums">
-                    Rs. {totalRevenue.toLocaleString()}
-                  </div>
-                  <span className="text-[10px] text-[#806F77] font-medium block mt-1">
-                    Cash on Delivery (COD) · Pakistan
-                  </span>
-                </div>
-
-                <div className="p-5 rounded-2xl bg-white border border-[#F1D6E2]">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#806F77]">
-                      Catalog Items
-                    </span>
-                    <ShoppingBag className="w-4 h-4 text-[#E94F91]" />
-                  </div>
-                  <div className="text-2xl font-black text-[#241B20] tabular-nums">
-                    {products.length}
-                  </div>
-                  <span className="text-[10px] text-[#806F77] font-medium block mt-1">
-                    Active on Storefront
-                  </span>
-                </div>
-
-                <div className="p-5 rounded-2xl bg-white border border-[#F1D6E2]">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#806F77]">
-                      Customer Inquiries
-                    </span>
-                    <MessageCircle className="w-4 h-4 text-[#25D366]" />
-                  </div>
-                  <div className="text-2xl font-black text-[#241B20] tabular-nums">
-                    {inquiries.length}
-                  </div>
-                  <span className="text-[10px] text-[#E94F91] font-bold block mt-1">
-                    {inquiries.filter((i) => i.status === 'New').length} New Messages
-                  </span>
-                </div>
-              </div>
-
-              {/* Navigation Tabs */}
-              <div className="flex border-b border-[#F1D6E2] gap-2 overflow-x-auto">
-                <button
-                  onClick={() => setActiveTab('orders')}
-                  className={`pb-3 px-4 text-xs font-black tracking-wider uppercase whitespace-nowrap transition-colors relative ${
-                    activeTab === 'orders'
-                      ? 'text-[#E94F91] border-b-2 border-[#E94F91]'
-                      : 'text-[#806F77] hover:text-[#241B20]'
-                  }`}
-                >
-                  Customer Orders ({orders.length})
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('products')}
-                  className={`pb-3 px-4 text-xs font-black tracking-wider uppercase whitespace-nowrap transition-colors relative ${
-                    activeTab === 'products'
-                      ? 'text-[#E94F91] border-b-2 border-[#E94F91]'
-                      : 'text-[#806F77] hover:text-[#241B20]'
-                  }`}
-                >
-                  Catalog & Stock ({products.length})
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('inquiries')}
-                  className={`pb-3 px-4 text-xs font-black tracking-wider uppercase whitespace-nowrap transition-colors relative ${
-                    activeTab === 'inquiries'
-                      ? 'text-[#E94F91] border-b-2 border-[#E94F91]'
-                      : 'text-[#806F77] hover:text-[#241B20]'
-                  }`}
-                >
-                  Inquiries ({inquiries.length})
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('settings')}
-                  className={`pb-3 px-4 text-xs font-black tracking-wider uppercase whitespace-nowrap transition-colors relative ${
-                    activeTab === 'settings'
-                      ? 'text-[#E94F91] border-b-2 border-[#E94F91]'
-                      : 'text-[#806F77] hover:text-[#241B20]'
-                  }`}
-                >
-                  Concierge & Settings
-                </button>
-              </div>
-
-              {/* TAB 1: ORDERS TAB */}
-              {activeTab === 'orders' && (
-                <div className="space-y-4">
-                  {/* Status Filters */}
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-[#806F77] uppercase tracking-wider">
-                        Filter Status:
-                      </span>
-                      {['All', 'Pending', 'Confirmed', 'Dispatched', 'Delivered', 'Cancelled'].map((st) => (
-                        <button
-                          key={st}
-                          onClick={() => setOrderStatusFilter(st)}
-                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
-                            orderStatusFilter === st
-                              ? 'bg-[#E94F91] text-white shadow-sm'
-                              : 'bg-[#FFF0F6] text-[#806F77] hover:text-[#241B20] border border-[#F1D6E2]'
+            /* Logged-In Admin Management Dashboard */
+            <div className="space-y-6">
+              {/* Tab Navigation & KPI Overview */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#F1D6E2] pb-4">
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                  {[
+                    { id: 'orders', label: 'Customer Orders', count: orders.length },
+                    { id: 'products', label: 'Catalog Products', count: products.length },
+                    { id: 'inquiries', label: 'Client Inquiries', count: inquiries.length },
+                    { id: 'settings', label: 'Maison Settings' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id as any)}
+                      className={`px-4 py-2 rounded-full text-xs font-bold tracking-wider uppercase transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                        activeTab === tab.id
+                          ? 'bg-[#E94F91] text-white shadow-sm'
+                          : 'bg-[#FFF0F6] text-[#806F77] hover:text-[#241B20]'
+                      }`}
+                    >
+                      <span>{tab.label}</span>
+                      {typeof tab.count === 'number' && (
+                        <span
+                          className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                            activeTab === tab.id
+                              ? 'bg-white/20 text-white'
+                              : 'bg-white text-[#E94F91] border border-[#F1D6E2]'
                           }`}
                         >
-                          {st}
+                          {tab.count}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-[#806F77]">
+                    Live Status:
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold uppercase tracking-wider">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Atelier Operational
+                  </span>
+                </div>
+              </div>
+
+              {/* TAB 1: ORDERS MANAGEMENT */}
+              {activeTab === 'orders' && (
+                <div className="space-y-6">
+                  {/* KPI Bar */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="p-5 rounded-2xl bg-white border border-[#F1D6E2]">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#806F77]">
+                          Total Orders
+                        </span>
+                        <Package className="w-4 h-4 text-[#E94F91]" />
+                      </div>
+                      <div className="text-2xl font-black text-[#241B20]">
+                        {orders.length}
+                      </div>
+                      <span className="text-[10px] text-[#806F77] font-medium block mt-1">
+                        {pendingOrders} awaiting dispatch
+                      </span>
+                    </div>
+
+                    <div className="p-5 rounded-2xl bg-white border border-[#F1D6E2]">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#806F77]">
+                          Recorded Revenue
+                        </span>
+                        <DollarSign className="w-4 h-4 text-[#059669]" />
+                      </div>
+                      <div className="text-2xl font-black text-[#241B20] tabular-nums">
+                        Rs. {totalRevenue.toLocaleString()}
+                      </div>
+                      <span className="text-[10px] text-[#806F77] font-medium block mt-1">
+                        Verified Advance Payment · Pakistan
+                      </span>
+                    </div>
+
+                    <div className="p-5 rounded-2xl bg-white border border-[#F1D6E2]">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#806F77]">
+                          Catalog Items
+                        </span>
+                        <ShoppingBag className="w-4 h-4 text-[#E94F91]" />
+                      </div>
+                      <div className="text-2xl font-black text-[#241B20]">
+                        {products.length}
+                      </div>
+                      <span className="text-[10px] text-[#806F77] font-medium block mt-1">
+                        Live in storefront
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Filter and Clear */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                      <span className="text-xs font-bold text-[#806F77]">Status:</span>
+                      {['All', 'Pending', 'Confirmed', 'Dispatched', 'Delivered'].map((status) => (
+                        <button
+                          key={status}
+                          onClick={() => setOrderStatusFilter(status)}
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                            orderStatusFilter === status
+                              ? 'bg-[#241B20] text-white'
+                              : 'bg-white border border-[#F1D6E2] text-[#806F77] hover:text-[#241B20]'
+                          }`}
+                        >
+                          {status}
                         </button>
                       ))}
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-[#806F77] font-medium">
-                        Showing {filteredOrders.length} order(s)
-                      </span>
-                      {orders.length > 0 && (
-                        <button
-                          onClick={() => {
-                            if (window.confirm('Are you sure you want to clear all orders?')) {
-                              clearAllOrders();
-                            }
-                          }}
-                          className="px-3 py-1 rounded-full border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition-colors inline-flex items-center gap-1.5"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Clear All Orders</span>
-                        </button>
-                      )}
-                    </div>
+                    {orders.length > 0 && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Are you sure you want to clear all order logs?')) {
+                            clearAllOrders();
+                          }
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Clear All Orders</span>
+                      </button>
+                    )}
                   </div>
 
-                  {/* Orders Table or Empty State */}
-                  {filteredOrders.length === 0 ? (
-                    <div className="p-12 text-center text-xs text-[#806F77] bg-[#FFF9FC] rounded-2xl border border-dashed border-[#F1D6E2]">
-                      <Package className="w-8 h-8 text-[#E94F91] mx-auto mb-2 opacity-60" />
-                      <p className="font-bold text-[#241B20]">No Orders Recorded</p>
-                      <p className="text-[11px] text-[#806F77] mt-1">
-                        New orders placed on the website across Pakistan will automatically appear here.
-                      </p>
-                    </div>
-                  ) : (
-                  <div className="border border-[#F1D6E2] rounded-2xl overflow-hidden">
+                  {/* Orders Table */}
+                  <div className="rounded-2xl border border-[#F1D6E2] overflow-hidden bg-white">
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs text-[#241B20]">
-                        <thead className="bg-[#FFF0F6] border-b border-[#F1D6E2] font-black uppercase tracking-wider text-[10px] text-[#806F77]">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-[#FFF9FC] border-b border-[#F1D6E2] text-[10px] uppercase tracking-wider text-[#806F77] font-bold">
                           <tr>
-                            <th className="p-4">Order #</th>
-                            <th className="p-4">Customer</th>
-                            <th className="p-4">City / Address</th>
-                            <th className="p-4">Items</th>
+                            <th className="p-4">Order ID & Date</th>
+                            <th className="p-4">Customer Details</th>
+                            <th className="p-4">Destination</th>
+                            <th className="p-4">Items Ordered</th>
                             <th className="p-4">Total</th>
                             <th className="p-4">Status</th>
-                            <th className="p-4">Actions</th>
+                            <th className="p-4 text-right">Actions</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#F1D6E2]">
-                          {filteredOrders.map((ord) => {
-                            const whatsappCustomerUrl = `https://wa.me/${ord.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                              `Salam ${ord.customerName}! This is FLORA LUXE regarding your order #${ord.orderNumber}.`
-                            )}`;
+                        <tbody className="divide-y divide-[#F1D6E2]/60">
+                          {filteredOrders.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} className="p-8 text-center text-xs text-[#806F77]">
+                                No customer orders recorded yet. When shoppers checkout on the site, their orders will appear here automatically in real time.
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredOrders.map((ord) => {
+                              const whatsappCustomerUrl = `https://wa.me/${ord.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                                `Hi ${ord.customerName}, this is FLORA LUXE Customer Concierge regarding your order #${ord.id}. We have received your order for Rs. ${ord.total.toLocaleString()} and are preparing it with care.`
+                              )}`;
 
-                            return (
-                              <tr key={ord.id} className="hover:bg-[#FFF9FC] transition-colors">
-                                <td className="p-4 font-mono font-bold text-[#E94F91]">
-                                  {ord.orderNumber}
-                                  <span className="block text-[10px] font-normal text-[#806F77] mt-0.5">
-                                    {ord.createdAt}
-                                  </span>
-                                </td>
-                                <td className="p-4">
-                                  <div className="font-bold">{ord.customerName}</div>
-                                  <div className="text-[11px] text-[#806F77] font-mono">{ord.phone}</div>
-                                  <div className="text-[10px] text-[#806F77]">{ord.email}</div>
-                                </td>
-                                <td className="p-4 max-w-xs">
-                                  <span className="font-bold text-[#241B20] block">{ord.city}</span>
-                                  <span className="text-[11px] text-[#806F77] line-clamp-2">{ord.address}</span>
-                                </td>
-                                <td className="p-4">
-                                  {ord.items.map((it, idx) => (
-                                    <div key={idx} className="text-[11px] font-medium truncate max-w-[180px]">
-                                      {it.quantity}x {it.product.name}
-                                    </div>
-                                  ))}
-                                </td>
-                                <td className="p-4 font-black tabular-nums whitespace-nowrap">
-                                  Rs. {ord.total.toLocaleString()}
-                                  <span className="block text-[10px] text-[#059669] font-bold">
-                                    COD
-                                  </span>
-                                </td>
-                                <td className="p-4">
-                                  <select
-                                    value={ord.status}
-                                    onChange={(e) => updateOrderStatus(ord.id, e.target.value as OrderStatus)}
-                                    className={`px-3 py-1 rounded-full text-[11px] font-bold border focus:outline-none cursor-pointer ${
-                                      ord.status === 'Delivered'
-                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                        : ord.status === 'Dispatched'
-                                        ? 'bg-sky-50 text-sky-700 border-sky-200'
-                                        : ord.status === 'Confirmed'
-                                        ? 'bg-purple-50 text-purple-700 border-purple-200'
-                                        : ord.status === 'Cancelled'
-                                        ? 'bg-red-50 text-red-700 border-red-200'
-                                        : 'bg-amber-50 text-amber-700 border-amber-200'
-                                    }`}
-                                  >
-                                    <option value="Pending">Pending</option>
-                                    <option value="Confirmed">Confirmed</option>
-                                    <option value="Dispatched">Dispatched</option>
-                                    <option value="Delivered">Delivered</option>
-                                    <option value="Cancelled">Cancelled</option>
-                                  </select>
-                                </td>
-                                <td className="p-4">
-                                  <a
-                                    href={whatsappCustomerUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#25D366] hover:bg-[#20ba59] text-white text-[10px] font-bold uppercase tracking-wider shadow-sm transition-all"
-                                  >
-                                    <MessageCircle className="w-3.5 h-3.5 fill-white" />
-                                    <span>WhatsApp</span>
-                                  </a>
-                                </td>
-                              </tr>
-                            );
-                          })}
+                              return (
+                                <tr key={ord.id} className="hover:bg-[#FFF9FC]/70 transition-colors">
+                                  <td className="p-4 font-mono font-bold text-[#241B20] whitespace-nowrap">
+                                    <div>{ord.id}</div>
+                                    <div className="text-[10px] text-[#806F77] font-normal">{ord.createdAt}</div>
+                                  </td>
+                                  <td className="p-4">
+                                    <div className="font-bold text-[#241B20]">{ord.customerName}</div>
+                                    <div className="text-[#806F77] text-[11px] font-mono">{ord.phone}</div>
+                                    {ord.email && <div className="text-[#806F77] text-[10px]">{ord.email}</div>}
+                                  </td>
+                                  <td className="p-4 max-w-[200px]">
+                                    <div className="font-semibold text-[#241B20]">{ord.city}</div>
+                                    <div className="text-[#806F77] text-[11px] truncate">{ord.address}</div>
+                                  </td>
+                                  <td className="p-4">
+                                    {ord.items.map((item, i) => (
+                                      <div key={i} className="text-[11px] text-[#241B20] whitespace-nowrap">
+                                        <span className="font-bold">{item.quantity}x</span> {item.product.name}
+                                        {item.selectedColor && <span className="text-[#806F77]"> ({item.selectedColor})</span>}
+                                      </div>
+                                    ))}
+                                  </td>
+                                  <td className="p-4 font-black tabular-nums whitespace-nowrap">
+                                    Rs. {ord.total.toLocaleString()}
+                                    <span className="block text-[10px] text-[#059669] font-bold">
+                                      {ord.paymentMethod || 'Advance Payment'}
+                                    </span>
+                                  </td>
+                                  <td className="p-4">
+                                    <select
+                                      value={ord.status}
+                                      onChange={(e) => updateOrderStatus(ord.id, e.target.value as OrderStatus)}
+                                      className={`px-3 py-1 rounded-full text-[11px] font-bold border focus:outline-none cursor-pointer ${
+                                        ord.status === 'Delivered'
+                                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                          : ord.status === 'Dispatched'
+                                          ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                          : ord.status === 'Confirmed'
+                                          ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                                      }`}
+                                    >
+                                      <option value="Pending">Pending</option>
+                                      <option value="Confirmed">Confirmed</option>
+                                      <option value="Dispatched">Dispatched</option>
+                                      <option value="Delivered">Delivered</option>
+                                    </select>
+                                  </td>
+                                  <td className="p-4 text-right">
+                                    <a
+                                      href={whatsappCustomerUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#25D366] text-white font-bold text-[10px] hover:bg-[#1EBE5D] transition-colors"
+                                      title="Message customer directly on WhatsApp"
+                                    >
+                                      <MessageCircle className="w-3 h-3" />
+                                      <span>WhatsApp</span>
+                                    </a>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
                         </tbody>
                       </table>
                     </div>
                   </div>
-                  )}
                 </div>
               )}
 
-              {/* TAB 2: PRODUCTS TAB */}
+              {/* TAB 2: PRODUCTS CATALOG MANAGEMENT */}
               {activeTab === 'products' && (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <h3 className="text-sm font-black uppercase tracking-wider text-[#241B20]">
-                        Active Store Catalog
+                        Storefront Product Catalog ({products.length} Items)
                       </h3>
                       <p className="text-xs text-[#806F77]">
-                        Manage items, pricing, badges, and catalog curation.
+                        Manage items, photos, pricing, badges, and catalog curation.
                       </p>
                     </div>
 
@@ -518,7 +612,11 @@ export const AdminPortal: React.FC = () => {
                         </button>
                       )}
                       <button
-                        onClick={() => setIsAddProductModalOpen(true)}
+                        onClick={() => {
+                          setProductImages([]);
+                          setImageUrlInput('');
+                          setIsAddProductModalOpen(true);
+                        }}
                         className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#E94F91] text-white text-xs font-bold uppercase tracking-wider shadow-sm hover:bg-[#C93673] transition-colors"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -532,7 +630,7 @@ export const AdminPortal: React.FC = () => {
                       <ShoppingBag className="w-8 h-8 text-[#E94F91] mx-auto mb-2 opacity-60" />
                       <p className="font-bold text-[#241B20]">No Products in Catalog</p>
                       <p className="text-[11px] text-[#806F77] mt-1">
-                        All products have been removed. Click "+ Add Product" to add a new luxury piece.
+                        All products have been removed. Click "+ Add Product" to add a new luxury piece with photo upload.
                       </p>
                     </div>
                   ) : (
@@ -543,12 +641,28 @@ export const AdminPortal: React.FC = () => {
                           className="p-4 rounded-2xl bg-white border border-[#F1D6E2] space-y-3 flex flex-col justify-between relative group"
                         >
                           <div className="flex gap-3">
-                            <img
-                              src={prod.images[0] || 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=400&q=80'}
-                              alt={prod.name}
-                              className="w-16 h-20 rounded-xl object-cover border border-[#F1D6E2] bg-[#FFF0F6]"
-                              referrerPolicy="no-referrer"
-                            />
+                            {/* Photo with Change Photo button */}
+                            <div className="relative group/img shrink-0">
+                              <img
+                                src={prod.images[0] || 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=400&q=80'}
+                                alt={prod.name}
+                                className="w-16 h-20 rounded-xl object-cover border border-[#F1D6E2] bg-[#FFF0F6]"
+                                referrerPolicy="no-referrer"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingProductId(prod.id);
+                                  editCardFileInputRef.current?.click();
+                                }}
+                                title="Change photo"
+                                className="absolute inset-0 bg-black/55 rounded-xl text-white opacity-0 group-hover/img:opacity-100 flex flex-col items-center justify-center text-[9px] font-bold transition-opacity"
+                              >
+                                <Camera className="w-3.5 h-3.5 mb-0.5" />
+                                <span>Change</span>
+                              </button>
+                            </div>
+
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#E94F91] block">
@@ -629,71 +743,99 @@ export const AdminPortal: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="space-y-3">
-                    {inquiries.map((inq) => {
-                      const whatsappUrl = `https://wa.me/${inq.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                        `Salam ${inq.name}! Thank you for reaching out to FLORA LUXE. How may we assist you today?`
-                      )}`;
+                  {inquiries.length === 0 ? (
+                    <div className="p-12 text-center text-xs text-[#806F77] bg-[#FFF9FC] rounded-2xl border border-dashed border-[#F1D6E2]">
+                      <MessageCircle className="w-8 h-8 text-[#E94F91] mx-auto mb-2 opacity-60" />
+                      <p className="font-bold text-[#241B20]">No Client Messages Yet</p>
+                      <p className="text-[11px] text-[#806F77] mt-1">
+                        Contact form submissions from your clients will display here in real time.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {inquiries.map((inq) => {
+                        const whatsappUrl = `https://wa.me/${inq.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                          `Dear ${inq.name}, thank you for contacting FLORA LUXE. We are pleased to assist you regarding your inquiry.`
+                        )}`;
 
-                      return (
-                        <div
-                          key={inq.id}
-                          className="p-5 rounded-2xl bg-white border border-[#F1D6E2] flex flex-col md:flex-row md:items-center justify-between gap-4"
-                        >
-                          <div className="space-y-1.5 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-xs text-[#241B20]">{inq.name}</span>
-                              <span className="text-[10px] text-[#806F77] font-mono">{inq.phone}</span>
-                              <span className="text-[10px] text-[#806F77]">• {inq.createdAt}</span>
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                                inq.status === 'Resolved'
-                                  ? 'bg-emerald-50 text-emerald-700'
-                                  : 'bg-amber-50 text-amber-700'
-                              }`}>
+                        return (
+                          <div
+                            key={inq.id}
+                            className="p-5 rounded-2xl bg-white border border-[#F1D6E2] space-y-3"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h4 className="font-bold text-sm text-[#241B20]">{inq.name}</h4>
+                                <div className="text-xs text-[#806F77] font-mono">{inq.phone} · {inq.email}</div>
+                              </div>
+                              <span
+                                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                  inq.status === 'Resolved'
+                                    ? 'bg-emerald-50 text-emerald-700'
+                                    : inq.status === 'In Progress'
+                                    ? 'bg-amber-50 text-amber-700'
+                                    : 'bg-rose-50 text-rose-700'
+                                }`}
+                              >
                                 {inq.status}
                               </span>
                             </div>
-                            <p className="text-xs text-[#241B20] leading-relaxed bg-[#FFF9FC] p-3 rounded-xl border border-[#F1D6E2]/60">
-                              &ldquo;{inq.message}&rdquo;
-                            </p>
-                          </div>
 
-                          <div className="flex items-center gap-2 shrink-0">
-                            <a
-                              href={whatsappUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-3.5 py-1.5 rounded-full bg-[#25D366] text-white text-[11px] font-bold uppercase tracking-wider shadow-sm inline-flex items-center gap-1.5"
-                            >
-                              <MessageCircle className="w-3.5 h-3.5 fill-white" />
-                              <span>WhatsApp Reply</span>
-                            </a>
+                            <div className="bg-[#FFF9FC] p-3 rounded-xl border border-[#F1D6E2]/50 text-xs text-[#241B20]">
+                              <p className="text-[#806F77] leading-relaxed">{inq.message}</p>
+                            </div>
 
-                            <button
-                              onClick={() => updateInquiryStatus(inq.id, inq.status === 'Resolved' ? 'New' : 'Resolved')}
-                              className="px-3 py-1.5 rounded-full border border-[#F1D6E2] text-xs font-bold text-[#806F77] hover:bg-[#FFF0F6]"
-                            >
-                              {inq.status === 'Resolved' ? 'Reopen' : 'Mark Resolved'}
-                            </button>
+                            <div className="flex items-center justify-between pt-2 border-t border-[#F1D6E2] text-xs">
+                              <span className="text-[10px] text-[#806F77]">{inq.createdAt}</span>
+
+                              <div className="flex items-center gap-2">
+                                <select
+                                  value={inq.status}
+                                  onChange={(e) => updateInquiryStatus(inq.id, e.target.value as any)}
+                                  className="px-2 py-1 rounded-lg border border-[#F1D6E2] text-[11px] font-bold text-[#806F77]"
+                                >
+                                  <option value="New">New</option>
+                                  <option value="In Progress">In Progress</option>
+                                  <option value="Resolved">Resolved</option>
+                                </select>
+
+                                <a
+                                  href={whatsappUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-3 py-1 rounded-full bg-[#25D366] text-white text-[11px] font-bold flex items-center gap-1 hover:bg-[#1EBE5D] transition-colors"
+                                >
+                                  <MessageCircle className="w-3 h-3" />
+                                  <span>Reply WhatsApp</span>
+                                </a>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* TAB 4: SETTINGS & CONCIERGE */}
+              {/* TAB 4: SETTINGS TAB */}
               {activeTab === 'settings' && (
-                <div className="space-y-6 max-w-2xl">
+                <div className="max-w-xl mx-auto space-y-4">
+                  <h3 className="text-sm font-black uppercase tracking-wider text-[#241B20]">
+                    FLORA LUXE Brand & Operational Settings
+                  </h3>
+
                   <div className="p-6 rounded-2xl bg-white border border-[#F1D6E2] space-y-4">
-                    <h3 className="text-sm font-black uppercase tracking-wider text-[#241B20] pb-3 border-b border-[#F1D6E2]">
-                      Store Channels & Logistics
-                    </h3>
+                    <div className="flex justify-between items-center text-xs py-1">
+                      <span className="text-[#806F77] font-medium">Brand Identity:</span>
+                      <span className="font-bold text-[#241B20]">FLORA LUXE (International Luxury House)</span>
+                    </div>
 
                     <div className="flex justify-between items-center text-xs py-1">
-                      <span className="text-[#806F77] font-medium">WhatsApp Concierge Hotline:</span>
-                      <span className="font-mono font-bold text-[#241B20]">+92 326 4238154</span>
+                      <span className="text-[#806F77] font-medium">Official Concierge WhatsApp:</span>
+                      <a href="https://wa.me/923264238154" target="_blank" rel="noopener noreferrer" className="font-bold text-[#059669] hover:underline">
+                        +92 326 4238154
+                      </a>
                     </div>
 
                     <div className="flex justify-between items-center text-xs py-1">
@@ -703,7 +845,7 @@ export const AdminPortal: React.FC = () => {
 
                     <div className="flex justify-between items-center text-xs py-1">
                       <span className="text-[#806F77] font-medium">Payment Preference:</span>
-                      <span className="font-bold text-[#241B20]">Cash on Delivery (COD) Enabled</span>
+                      <span className="font-bold text-[#241B20]">Advance Payment & Wire Transfer</span>
                     </div>
 
                     <div className="flex justify-between items-center text-xs py-1">
@@ -722,7 +864,7 @@ export const AdminPortal: React.FC = () => {
 
                     <div className="flex justify-between items-center text-xs py-1">
                       <span className="text-[#806F77] font-medium">Executive Office:</span>
-                      <span className="font-bold text-[#241B20]">Founder & CEO Emaan Fatima</span>
+                      <span className="font-bold text-[#241B20]">Founder & CEO Noor Fatima</span>
                     </div>
                   </div>
                 </div>
@@ -731,23 +873,29 @@ export const AdminPortal: React.FC = () => {
           )}
         </div>
 
-        {/* Add Product Modal */}
+        {/* Add Product Modal with Full Image Upload Support */}
         {isAddProductModalOpen && (
-          <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#F1D6E2]">
+          <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+            <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#F1D6E2] max-h-[92vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#F1D6E2]">
-                <h3 className="text-sm font-black uppercase tracking-wider text-[#241B20]">
-                  Add New Catalog Product
-                </h3>
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-[#FFF0F6] flex items-center justify-center text-[#E94F91]">
+                    <Plus className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-sm font-black uppercase tracking-wider text-[#241B20]">
+                    Add New Catalog Product
+                  </h3>
+                </div>
                 <button
                   onClick={() => setIsAddProductModalOpen(false)}
-                  className="p-1 rounded-full text-[#806F77] hover:text-[#241B20]"
+                  className="p-1.5 rounded-full text-[#806F77] hover:text-[#241B20] hover:bg-[#FFF0F6] transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               <form onSubmit={handleCreateProduct} className="space-y-4 text-xs">
+                {/* 1. Title */}
                 <div>
                   <label className="block text-[11px] font-bold uppercase text-[#241B20] mb-1">
                     Product Title *
@@ -757,11 +905,12 @@ export const AdminPortal: React.FC = () => {
                     required
                     value={newProd.name}
                     onChange={(e) => setNewProd({ ...newProd, name: e.target.value })}
-                    placeholder="e.g. Royal Damask Rose Choker"
+                    placeholder="e.g. Royal Rose Gold Diamond Pendant"
                     className="w-full px-3 py-2.5 rounded-xl border border-[#F1D6E2] text-xs focus:outline-none focus:border-[#E94F91]"
                   />
                 </div>
 
+                {/* 2. Category & Price */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-bold uppercase text-[#241B20] mb-1">
@@ -793,6 +942,147 @@ export const AdminPortal: React.FC = () => {
                   </div>
                 </div>
 
+                {/* 3. PRODUCT IMAGES UPLOAD SECTION (Requested Feature) */}
+                <div className="space-y-2 pt-1 border-t border-[#F1D6E2]/70">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[11px] font-bold uppercase text-[#241B20] flex items-center gap-1.5">
+                      <ImageIcon className="w-3.5 h-3.5 text-[#E94F91]" />
+                      <span>Product Photos & Images *</span>
+                    </label>
+                    <span className="text-[10px] text-[#806F77] font-semibold">
+                      {productImages.length} attached
+                    </span>
+                  </div>
+
+                  {/* Drag-and-drop / Click file upload button */}
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-4 rounded-2xl border-2 border-dashed border-[#F1D6E2] hover:border-[#E94F91] bg-[#FFF9FC] hover:bg-[#FFF0F6] cursor-pointer transition-all flex flex-col items-center justify-center text-center group"
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleImageFileUpload}
+                    />
+                    <div className="w-10 h-10 rounded-full bg-white shadow-sm border border-[#F1D6E2] group-hover:scale-110 flex items-center justify-center text-[#E94F91] mb-2 transition-transform">
+                      {isUploadingImage ? (
+                        <RefreshCw className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <Upload className="w-5 h-5" />
+                      )}
+                    </div>
+                    <span className="text-xs font-bold text-[#241B20]">
+                      {isUploadingImage ? 'Processing & Optimizing Image...' : 'Click to Upload Photo from Device'}
+                    </span>
+                    <span className="text-[10px] text-[#806F77] mt-0.5">
+                      Select JPG, PNG, WEBP from your phone or laptop
+                    </span>
+                  </div>
+
+                  {/* Or Paste URL option */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <div className="relative flex-1">
+                      <LinkIcon className="w-3.5 h-3.5 text-[#806F77] absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="url"
+                        value={imageUrlInput}
+                        onChange={(e) => setImageUrlInput(e.target.value)}
+                        placeholder="Or paste image link (https://...)"
+                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-[#F1D6E2] text-[11px] focus:outline-none focus:border-[#E94F91]"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddImageUrl();
+                          }
+                        }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddImageUrl}
+                      disabled={!imageUrlInput.trim()}
+                      className="px-3 py-2 rounded-xl bg-[#241B20] text-white text-[11px] font-bold hover:bg-[#E94F91] disabled:opacity-40 transition-colors shrink-0"
+                    >
+                      Attach URL
+                    </button>
+                  </div>
+
+                  {/* Quick Luxury Presets */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[10px] text-[#806F77] font-semibold">Quick Presets:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProductImages((prev) => [...prev, jewelryImg]);
+                        showToast('Preset Added', 'Fine Jewelry photo attached');
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-[#FFF0F6] border border-[#F1D6E2] text-[10px] font-bold text-[#E94F91] hover:bg-[#E94F91] hover:text-white transition-colors"
+                    >
+                      + Jewelry
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProductImages((prev) => [...prev, handbagImg]);
+                        showToast('Preset Added', 'Handbag photo attached');
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-[#FFF0F6] border border-[#F1D6E2] text-[10px] font-bold text-[#E94F91] hover:bg-[#E94F91] hover:text-white transition-colors"
+                    >
+                      + Handbag
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProductImages((prev) => [...prev, beautyImg]);
+                        showToast('Preset Added', 'Beauty photo attached');
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-[#FFF0F6] border border-[#F1D6E2] text-[10px] font-bold text-[#E94F91] hover:bg-[#E94F91] hover:text-white transition-colors"
+                    >
+                      + Beauty
+                    </button>
+                  </div>
+
+                  {/* Selected Images Preview Thumbnails */}
+                  {productImages.length > 0 && (
+                    <div className="pt-2">
+                      <span className="text-[10px] font-bold text-[#806F77] uppercase block mb-1.5">
+                        Selected Photos Preview ({productImages.length})
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {productImages.map((img, idx) => (
+                          <div
+                            key={idx}
+                            className="relative w-16 h-20 rounded-xl overflow-hidden border-2 border-[#E94F91] bg-white group shadow-sm"
+                          >
+                            <img
+                              src={img}
+                              alt={`Upload preview ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            {idx === 0 && (
+                              <span className="absolute top-1 left-1 bg-[#E94F91] text-white text-[8px] font-black px-1 rounded uppercase">
+                                Cover
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(idx)}
+                              title="Remove photo"
+                              className="absolute top-1 right-1 p-0.5 rounded-full bg-black/70 hover:bg-red-600 text-white transition-colors"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. Tagline / Subtitle */}
                 <div>
                   <label className="block text-[11px] font-bold uppercase text-[#241B20] mb-1">
                     Tagline / Subtitle
@@ -806,6 +1096,7 @@ export const AdminPortal: React.FC = () => {
                   />
                 </div>
 
+                {/* 5. Materials & Finishes */}
                 <div>
                   <label className="block text-[11px] font-bold uppercase text-[#241B20] mb-1">
                     Materials & Finishes
@@ -819,6 +1110,7 @@ export const AdminPortal: React.FC = () => {
                   />
                 </div>
 
+                {/* 6. Badges */}
                 <div className="flex gap-4 pt-2">
                   <label className="flex items-center gap-2 cursor-pointer font-bold">
                     <input
@@ -841,17 +1133,18 @@ export const AdminPortal: React.FC = () => {
                   </label>
                 </div>
 
+                {/* Actions */}
                 <div className="flex justify-end gap-2 pt-4 border-t border-[#F1D6E2]">
                   <button
                     type="button"
                     onClick={() => setIsAddProductModalOpen(false)}
-                    className="px-4 py-2 rounded-full border border-[#F1D6E2] text-xs font-bold text-[#806F77]"
+                    className="px-4 py-2 rounded-full border border-[#F1D6E2] text-xs font-bold text-[#806F77] hover:text-[#241B20]"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 rounded-full bg-[#E94F91] text-white text-xs font-bold tracking-wider uppercase shadow-md"
+                    className="px-6 py-2 rounded-full bg-[#E94F91] text-white text-xs font-bold tracking-wider uppercase shadow-md hover:bg-[#C93673] transition-colors"
                   >
                     Save Product
                   </button>

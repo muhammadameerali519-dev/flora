@@ -38,7 +38,7 @@ export const Footer: React.FC = () => {
             </p>
             <div className="pt-2">
               <span className="text-[11px] tracking-wider uppercase text-[#E94F91] font-bold block">
-                CEO & FOUNDER: EMAAN FATIMA
+                CEO & FOUNDER: NOOR FATIMA
               </span>
             </div>
           </div>
@@ -153,7 +153,7 @@ export const Footer: React.FC = () => {
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-400 font-medium gap-4">
           <p>© 2026 FLORA LUXE. All Rights Reserved.</p>
           <p className="tracking-wide">
-            Under the Creative Direction of CEO Emaan Fatima · International Luxury House
+            Under the Creative Direction of CEO Noor Fatima · International Luxury House
           </p>
         </div>
       </div>

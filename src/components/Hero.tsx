@@ -151,7 +151,7 @@ export const Hero: React.FC = () => {
             >
               <span className="text-[#241B20]">DELIVERY ACROSS PAKISTAN</span>
               <span className="text-[#F1D6E2]">·</span>
-              <span className="text-[#241B20]">CASH ON DELIVERY (COD)</span>
+              <span className="text-[#241B20]">PREMIUM BESPOKE PACKAGING</span>
               <span className="text-[#F1D6E2]">·</span>
               <span className="text-[#241B20]">MADE FOR YOU</span>
             </motion.div>

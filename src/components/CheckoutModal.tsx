@@ -20,7 +20,7 @@ export const CheckoutModal: React.FC = () => {
     email: '',
     address: '',
     city: '',
-    paymentMethod: 'Cash on Delivery (COD)',
+    paymentMethod: 'Bank Wire / Online Transfer',
     specialInstructions: '',
   });
 
@@ -306,9 +306,9 @@ export const CheckoutModal: React.FC = () => {
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[
-                    'Cash on Delivery (COD)',
+                    'Bank Wire / Online Transfer',
                     'WhatsApp VIP Invoice',
-                    'Bank Wire / Card',
+                    'Debit / Credit Card',
                   ].map((method) => (
                     <button
                       type="button"
