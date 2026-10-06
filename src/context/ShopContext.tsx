@@ -398,7 +398,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const normalizedUser = user.trim().toLowerCase();
     const normalizedPass = pass.trim();
 
-    const validUsernames = ['admin', 'flora.admin', 'floraluxe', 'noor', 'noorfatima'];
+    const validUsernames = ['admin', 'flora.admin', 'floraluxe', 'noor', 'noorbajwa'];
 
     if (
       validUsernames.includes(normalizedUser) &&

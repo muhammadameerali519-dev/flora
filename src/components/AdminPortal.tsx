@@ -859,7 +859,7 @@ export const AdminPortal: React.FC = () => {
 
                     <div className="flex justify-between items-center text-xs py-1">
                       <span className="text-[#806F77] font-medium">Executive Office:</span>
-                      <span className="font-bold text-[#241B20]">Founder & CEO Noor Fatima</span>
+                      <span className="font-bold text-[#241B20]">Founder & CEO Noor Bajwa</span>
                     </div>
                   </div>
                 </div>

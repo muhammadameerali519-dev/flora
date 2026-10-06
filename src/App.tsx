@@ -80,7 +80,7 @@ export default function App() {
           {/* 8. Social Media Section & Instagram Gallery */}
           <SocialSection />
 
-          {/* 9. About FLORA LUXE (Heritage & CEO Noor Fatima) */}
+          {/* 9. About FLORA LUXE (Heritage & CEO Noor Bajwa) */}
           <AboutSection />
 
           {/* 10. Contact Section & Direct WhatsApp Inquiries */}

@@ -66,32 +66,38 @@ export const FloraLogo: React.FC<FloraLogoProps> = ({
 }) => {
   const [imgError, setImgError] = useState(false);
 
-  // Full official framed logo mark (used in Welcome Experience and About page)
+  // Full official framed logo mark (used in Welcome Experience / Intro Logo)
   if (variant === 'full') {
     return (
       <div
-        className={`relative inline-flex flex-col items-center justify-center p-3 sm:p-4 bg-[#FFF8FA] border-2 border-[#ECA7BA] rounded-2xl shadow-xl overflow-hidden ${className}`}
+        className={`relative inline-flex flex-col items-center justify-center p-2.5 sm:p-3 bg-[#FFF3F6] border-2 border-[#D97995] rounded-3xl shadow-2xl overflow-hidden ${className}`}
       >
-        {!imgError ? (
-          <img
-            src={officialLogoImg}
-            alt="FLORA - bloom your beauty"
-            onError={() => setImgError(true)}
-            className="w-56 h-56 sm:w-64 sm:h-64 object-contain rounded-xl"
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <div className="flex flex-col items-center text-center p-6">
-            <FloraFlowerIcon className="w-20 h-20 mb-3" color="#B75573" />
-            <span className="text-3xl font-serif font-bold tracking-[0.2em] text-[#B75573] uppercase">
-              FLORA
-            </span>
-            <div className="w-24 h-[1px] bg-[#B75573]/60 my-2" />
-            <span className="text-xs font-serif tracking-[0.24em] text-[#B75573] lowercase">
-              bloom your beauty
-            </span>
-          </div>
-        )}
+        <div className="border border-[#D97995] rounded-2xl p-2 sm:p-2.5 bg-white/60 flex flex-col items-center justify-center">
+          {!imgError ? (
+            <img
+              src={officialLogoImg}
+              alt="FLORA - bloom your beauty"
+              onError={() => setImgError(true)}
+              className="w-64 h-64 sm:w-80 sm:h-80 object-contain rounded-xl"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="flex flex-col items-center text-center p-8 w-64 sm:w-80">
+              <FloraFlowerIcon className="w-24 h-24 mb-3" color="#B74D6C" />
+              <span className="text-4xl font-serif font-black tracking-[0.2em] text-[#B74D6C] uppercase">
+                FLORA
+              </span>
+              <div className="flex items-center gap-2 my-2.5 w-36 justify-center">
+                <div className="h-[1px] bg-[#B74D6C]/50 flex-1" />
+                <span className="text-xs text-[#B74D6C]">✤</span>
+                <div className="h-[1px] bg-[#B74D6C]/50 flex-1" />
+              </div>
+              <span className="text-sm font-serif tracking-[0.24em] text-[#B74D6C] lowercase">
+                bloom your beauty
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     );
   }

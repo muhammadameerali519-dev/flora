@@ -138,7 +138,7 @@ export const ContactSection: React.FC = () => {
                   Executive Office
                 </span>
                 <span className="font-bold text-[#241B20]">
-                  CEO Noor Fatima Office
+                  CEO Noor Bajwa Office
                 </span>
               </div>
             </div>

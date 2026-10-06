@@ -233,7 +233,7 @@ export const AboutSection: React.FC = () => {
               Each piece—from our hand-finished fine jewelry set in warm rose gold to Italian calfskin accessories and botanical beauty elixirs—is chosen to honor personal self-expression. We blend traditional craftsmanship with contemporary, wearable silhouettes that feel effortless from day to evening.
             </p>
 
-            {/* CEO Noor Fatima Quote Block */}
+            {/* CEO Noor Bajwa Quote Block */}
             <div className="p-6 sm:p-8 rounded-[24px] bg-white border border-[#F1D6E2] shadow-sm my-8">
               <p className="text-base sm:text-lg font-serif italic text-[#241B20] leading-relaxed mb-4">
                 &ldquo;Every woman deserves pieces that mirror her innate grace and resilience. FLORA LUXE is our tribute to timeless style—soft yet powerful, modern yet enduring.&rdquo;
@@ -241,7 +241,7 @@ export const AboutSection: React.FC = () => {
               <div className="flex items-center justify-between pt-4 border-t border-[#F1D6E2]">
                 <div>
                   <h4 className="text-base font-black text-[#241B20] tracking-wider uppercase">
-                    NOOR FATIMA
+                    NOOR BAJWA
                   </h4>
                   <span className="text-xs tracking-[0.16em] uppercase text-[#E94F91] font-bold block">
                     FOUNDER & CHIEF EXECUTIVE OFFICER
