@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import officialLogoImg from '../assets/images/flora_official_logo.jpg';
 
 interface FloraLogoProps {
-  variant?: 'full' | 'horizontal' | 'compact' | 'icon-only' | 'badge';
+  variant?: 'full' | 'horizontal' | 'compact' | 'icon-only' | 'badge' | 'transparent';
   className?: string;
   imageClassName?: string;
   textClassName?: string;
@@ -84,7 +84,7 @@ export const FloraLogo: React.FC<FloraLogoProps> = ({
           ) : (
             <div className="flex flex-col items-center text-center p-8 w-64 sm:w-80">
               <FloraFlowerIcon className="w-24 h-24 mb-3" color="#B74D6C" />
-              <span className="text-4xl font-serif font-black tracking-[0.2em] text-[#B74D6C] uppercase">
+              <span className="text-4xl font-montserrat-extrabold tracking-[0.2em] text-[#B74D6C] uppercase">
                 FLORA
               </span>
               <div className="flex items-center gap-2 my-2.5 w-36 justify-center">
@@ -98,6 +98,35 @@ export const FloraLogo: React.FC<FloraLogoProps> = ({
             </div>
           )}
         </div>
+      </div>
+    );
+  }
+
+  // Pure transparent logo mark with vector floral emblem & Montserrat ExtraBold branding
+  if (variant === 'transparent') {
+    const iconColor = theme === 'white' ? '#FFFFFF' : theme === 'charcoal' ? '#241B20' : '#B74D6C';
+    const textColor = theme === 'white' ? 'text-white' : theme === 'charcoal' ? 'text-[#241B20]' : 'text-[#B74D6C]';
+    return (
+      <div className={`relative inline-flex flex-col items-center justify-center bg-transparent select-none ${className}`}>
+        {/* Lotus emblem without background or frame */}
+        <FloraFlowerIcon className={`w-28 h-28 sm:w-36 sm:h-36 mb-2.5 drop-shadow-sm transition-transform duration-300 hover:scale-105 ${imageClassName}`} color={iconColor} />
+        
+        {/* FLORA title in Montserrat ExtraBold */}
+        <h1 className={`text-4xl sm:text-5xl lg:text-6xl font-montserrat-extrabold tracking-[0.22em] uppercase leading-none ${textColor} ${textClassName}`}>
+          FLORA
+        </h1>
+
+        {/* Delicate divider with blossom star */}
+        <div className="flex items-center gap-2.5 my-3 w-40 sm:w-48 justify-center">
+          <div className="h-[1.5px] bg-current opacity-40 flex-1" style={{ color: iconColor }} />
+          <span className="text-sm" style={{ color: iconColor }}>✤</span>
+          <div className="h-[1.5px] bg-current opacity-40 flex-1" style={{ color: iconColor }} />
+        </div>
+
+        {/* Tagline */}
+        <span className="text-xs sm:text-sm font-montserrat tracking-[0.28em] font-medium lowercase opacity-90" style={{ color: iconColor }}>
+          bloom your beauty
+        </span>
       </div>
     );
   }

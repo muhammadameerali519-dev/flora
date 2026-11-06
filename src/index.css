@@ -3,6 +3,7 @@
 @theme {
   --font-sans: "Archivo", system-ui, -apple-system, sans-serif;
   --font-serif: "Playfair Display", Georgia, serif;
+  --font-montserrat: "Montserrat", sans-serif;
   --color-primary: #E94F91;
   --color-primary-dark: #C93673;
   --color-baby-pink: #FDE7F1;
@@ -48,6 +49,15 @@
 
   .font-archivo {
     font-family: var(--font-sans);
+  }
+
+  .font-montserrat {
+    font-family: var(--font-montserrat);
+  }
+
+  .font-montserrat-extrabold {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 800;
   }
 }
 

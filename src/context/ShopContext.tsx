@@ -74,6 +74,10 @@ interface ShopContextType {
   isAdminLoggedIn: boolean;
   adminLogin: (user: string, pass: string) => boolean;
   adminLogout: () => void;
+
+  // Storefront Disabled State
+  isStoreDisabled: boolean;
+  setIsStoreDisabled: (val: boolean) => void;
 }
 
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
@@ -141,6 +145,16 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [isAdminOpen, setIsAdminOpen] = useState(false);
 
+  // Storefront Disabled State (default true as requested: "this store has been disable")
+  const [isStoreDisabled, setIsStoreDisabled] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('flora_luxe_store_disabled');
+      return saved !== null ? JSON.parse(saved) : true;
+    } catch {
+      return true;
+    }
+  });
+
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -190,6 +204,13 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('flora_luxe_inquiries', JSON.stringify(inquiries));
     } catch {}
   }, [inquiries]);
+
+  // Sync store disabled state
+  useEffect(() => {
+    try {
+      localStorage.setItem('flora_luxe_store_disabled', JSON.stringify(isStoreDisabled));
+    } catch {}
+  }, [isStoreDisabled]);
 
   const showToast = (message: string, subtext?: string) => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -467,6 +488,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAdminLoggedIn,
         adminLogin,
         adminLogout,
+        isStoreDisabled,
+        setIsStoreDisabled,
       }}
     >
       {children}
