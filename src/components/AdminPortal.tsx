@@ -60,8 +60,6 @@ export const AdminPortal: React.FC = () => {
     inquiries,
     updateInquiryStatus,
     showToast,
-    isStoreDisabled,
-    setIsStoreDisabled,
   } = useShop();
 
   // Login form state
@@ -823,50 +821,6 @@ export const AdminPortal: React.FC = () => {
                   </h3>
 
                   <div className="p-6 rounded-2xl bg-white border border-[#F1D6E2] space-y-4">
-                    {/* Storefront Online / Disabled Toggle */}
-                    <div className="p-4 rounded-xl bg-[#FFF0F6] border border-[#F1D6E2] flex items-center justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-montserrat-extrabold uppercase tracking-wider text-[#241B20]">
-                            Storefront Status
-                          </span>
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                              isStoreDisabled
-                                ? 'bg-rose-100 text-rose-700 border border-rose-200'
-                                : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                            }`}
-                          >
-                            {isStoreDisabled ? 'Store Disabled' : 'Store Active'}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-[#806F77] mt-1 font-sans">
-                          {isStoreDisabled
-                            ? 'The public storefront displays "THIS STORE HAS BEEN DISABLED" with your transparent logo.'
-                            : 'The public storefront is currently open and accepting browsing & orders.'}
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const nextState = !isStoreDisabled;
-                          setIsStoreDisabled(nextState);
-                          showToast(
-                            nextState ? 'Storefront Disabled' : 'Storefront Enabled',
-                            nextState ? 'Store disabled notice is now active' : 'Store catalog is now live'
-                          );
-                        }}
-                        className={`px-4 py-2 rounded-full text-xs font-montserrat-extrabold uppercase tracking-wider shadow-sm transition-all ${
-                          isStoreDisabled
-                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                            : 'bg-rose-600 hover:bg-rose-700 text-white'
-                        }`}
-                      >
-                        {isStoreDisabled ? 'Re-enable Store' : 'Disable Store'}
-                      </button>
-                    </div>
-
                     <div className="flex justify-between items-center text-xs py-1">
                       <span className="text-[#806F77] font-medium">Brand Identity:</span>
                       <span className="font-bold text-[#241B20]">FLORA LUXE (International Luxury House)</span>
